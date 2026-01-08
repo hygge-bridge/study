@@ -52,17 +52,17 @@ void AlbumDao::updateAlbum(const Album &album) const
     DatabaseManager::debugQuery(query);
 }
 
-QVector<Album *> AlbumDao::albums() const
+std::vector<std::unique_ptr<Album>> AlbumDao::albums() const
 {
     QSqlQuery query(mDatabase);
-    QVector<Album*> albums;
+    std::vector<std::unique_ptr<Album>> albums;
     query.exec("SELECT id, name FROM album");
     DatabaseManager::debugQuery(query);
     while (query.next()) {
-        Album* album = new Album();
+        auto album = std::make_unique<Album>();
         album->setId(query.value("id").toInt());
         album->setName(query.value("name").toString());
-        albums.push_back(album);
+        albums.push_back(std::move(album));
     }
     return albums;
 }

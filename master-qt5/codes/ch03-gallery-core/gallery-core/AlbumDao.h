@@ -1,7 +1,8 @@
 #ifndef ALBUMDAO_H
 #define ALBUMDAO_H
 
-#include <QVector>
+#include <vector>
+#include <memory>
 
 class QSqlDatabase;
 class Album;
@@ -15,7 +16,7 @@ public:
     void addAlbum(Album& album) const;
     void deleteAlbum(int id) const;
     void updateAlbum(const Album& album) const;
-    QVector<Album*> albums() const;
+    std::vector<std::unique_ptr<Album>> albums() const;
 
 private:
     QSqlDatabase& mDatabase;
