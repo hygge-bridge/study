@@ -80,3 +80,31 @@ void foo()
 由于C++标准没有规定函数参数的求值顺序，如foo(new Album(), new Picture())，可能先new两个，在构造unqiue_ptr。这就会导致如果后者抛出异常，那么album就内存泄漏了。make_unique解决这个问题，这会强制创建一个unique_ptr再创建第二个。
 
 注意：qt容器重载了拷贝运算符。所以unique_ptr的唯一性会被打破，要用vector<unique_ptr>
+
+`std::unique_ptr<std::vector<std::unique_ptr<Album>>>`这种双重unique_ptr的使用场景：可能永远没有数据，那么这个写法比`<std::vector<std::unique_ptr<Album>>>`节省空间。比如可能长时间存放一些空的albums。vector本身一定会占用一些空间（内部有3个指针），而前者可以初始化为nullptr。vector无法完全清空内存，但是unique_ptr可以。
+
+### Implementing the model
+
+用户与数据库的直接连接会导致强耦合，比如当要切换另外一个存储层时将不得已修改界面代码。所以需要一个model层来与数据交互并以数据相关实现无关的方式暴露数据给用户。mvc就出现了。
+
+mvc：
+
+- model：请求数据并更新
+- view：向用户展示数据
+- controller：同时与model和view交互。想view填充正确的数据以及基于用户指令向model发送命令。
+
+qt将controller与view结合为了简化实现，从而形成了model/view架构。为了允许编辑和视图自定义，引入了delegate。
+
+使用一个缓存来避免每次查询数据库，一致性由model内部保证。
+
+QModelIndex是一个抽象类，用于定位某个位置的数据，而无需关系底层实现，比如view只需要使用index查询数据，而无需关心index.row()关联了数据库还是vector。由于模型可能更改，所以index可能失效，古QModelIndex的生命周期很短。
+
+数据被展示时往往是多个信息的聚合，所以通过role将每个数据与一个tag关联，从而让view知道显示的是那个类别的数据。
+
+model的根索引永远是QModelIndex()。
+
+PictureModel通过构造函数传入AlbumModel，然后进行信号槽连接。删除一个album，关联的pictures自动被删除。
+
+构造没有初始化数据库所有的pictures到缓存，因为只有当album被选择我们才加载。
+
+在代码强制指针拥有vector，即使是空的，可以避免代码中的空指针判断，虽然多一个空vector在堆上的开销。

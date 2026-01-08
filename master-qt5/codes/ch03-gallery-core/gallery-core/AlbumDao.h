@@ -16,7 +16,7 @@ public:
     void addAlbum(Album& album) const;
     void deleteAlbum(int id) const;
     void updateAlbum(const Album& album) const;
-    std::vector<std::unique_ptr<Album>> albums() const;
+    std::unique_ptr<std::vector<std::unique_ptr<Album>>> albums() const;
 
 private:
     QSqlDatabase& mDatabase;
