@@ -20,12 +20,14 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     Album.cpp \
     AlbumDao.cpp \
+    AlbumModel.cpp \
     DatabaseManager.cpp \
     Picture.cpp \
     PictureDao.cpp
 
 HEADERS += \
     AlbumDao.h \
+    AlbumModel.h \
     DatabaseManager.h \
     Picture.h \
     PictureDao.h \
