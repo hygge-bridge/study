@@ -10,14 +10,15 @@ AlbumModel::AlbumModel(QObject *parent)
 
 }
 
-void AlbumModel::addAlbum(const Album &album)
+QModelIndex AlbumModel::addAlbum(const Album &album)
 {
-    int index = mAlbums->size();
-    beginInsertRows(QModelIndex(), index, index);
+    int rowIndex = mAlbums->size();
+    beginInsertRows(QModelIndex(), rowIndex, rowIndex);
     auto newAlbum = std::make_unique<Album>(album.name());
     mDatabase.albumDao.addAlbum(*newAlbum);
     mAlbums->push_back(std::move(newAlbum));
     endInsertRows();
+    return index(rowIndex);
 }
 
 bool AlbumModel::removeRows(int row, int count, const QModelIndex &parent)
@@ -30,7 +31,7 @@ bool AlbumModel::removeRows(int row, int count, const QModelIndex &parent)
     for (int i = row; i <= last; ++i) {
         mDatabase.albumDao.deleteAlbum(mAlbums->at(i)->id());
     }
-    mAlbums->erase(mAlbums->begin() + row, mAlbums->begin() + last);
+    mAlbums->erase(mAlbums->begin() + row, mAlbums->begin() + row + count);
     endRemoveRows();
     return true;
 }

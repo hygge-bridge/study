@@ -13,6 +13,8 @@ class DatabaseManager;
 
 class GALLERYCORE_EXPORT AlbumModel : public QAbstractListModel
 {
+    Q_OBJECT
+
 public:
     enum Role {
         IdRole = Qt::UserRole + 1,
@@ -21,7 +23,7 @@ public:
 
     explicit AlbumModel(QObject *parent = nullptr);
 
-    void addAlbum(const Album& album);
+    QModelIndex addAlbum(const Album& album);
     bool removeRows(int row, int count, const QModelIndex &parent = QModelIndex()) override;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
