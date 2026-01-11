@@ -1,3 +1,178 @@
+## Get Your Qt Feet Wet
+
+### Qt project basic structure
+
+设置默认文件命格式：Tools | Options... | C++ | File Naming | Lower case file names option
+
+### MainWindow structure
+
+MainWindow.h头文件解析：
+
+```c++
+#include <QMainWindow> 
+
+// 前置声明，减少编译时间和避免循环依赖
+namespace Ui { 
+class MainWindow; 
+} 
+ 
+class MainWindow : public QMainWindow 
+{ 
+	// 允许定义自己的信号槽
+    Q_OBJECT 
+ 
+public: 
+    // 定义父子关系，让qt帮助内存管理，删除父指针会递归删除子
+    explicit MainWindow(QWidget *parent = 0); 
+    ~MainWindow(); 
+private: 
+    // 通过ui与C++UI组件交互。ui被定义在ui_MainWindow.h文件*（MainWindow.ui的转译文件）
+    Ui::MainWindow *ui; 
+};
+```
+
+关系图：![image-20260110212144621](master-qt5.assets/image-20260110212144621.png)
+
+MainWindow.cpp源文件分析：
+
+```c++
+#include "MainWindow.h"
+// 头文件使用的前置声明，所以本源文件包含ui的头文件
+#include "ui_MainWindow.h"
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+	// 初始化所有被使用的ui组件（widgets）
+    ui->setupUi(this);
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+```
+
+### Qt Designer interface
+
+designer界面分析：![image-20260110212947985](master-qt5.assets/image-20260110212947985.png)
+
+### Signals and slots
+
+```c++
+connect(sender, &Sender::signalName, receiver, &Receiver::slotName);
+```
+
+信号槽是一个灵活的消息交换机制：
+
+1. signal是被对象发送的消息
+2. slot是当信号被触发时会被调用的函数
+3. connect指定哪个信号被连接到哪个槽上
+
+Here is why you will love Qt signals and slots:
+
+- A slot remains an ordinary function, so you can call it yourself
+- A single signal can be linked to different slots
+- A single slot can be called by different linked signals
+- A connection can be made between a signal and a slot from different objects, and even
+- between objects living inside different threads
+
+### Custom QWidget
+
+Click on File | New File or Project | Qt | Qt Designer Form Class
+
+### Adding a task
+
+model和界面应该分开，但是由于这个例子足够简单，所以不分开也可以ok的。
+
+`ui->tasksLayout->addWidget(task)`会导致task的拥有权转移到tasksLayout的widget（centralWidget）上，layout不是qwidget所以不能作为父对象，父对象是拥有layout的qwidget。
+
+创建动态界面：MainWindow设置一个layout，创建task后将其添加到layout中（使用layout的addWidget方法）。
+
+### Using a QDialog
+
+```c++
+QString QinputDialog::getText( 
+  QWidget* parent,  
+      const QString& title,  
+      const QString& label,  
+      QLineEdit::EchoMode mode = QLineEdit::Normal,  
+      const QString& text = QString(),  
+      bool* ok = 0, ...)
+```
+
+### Distributing code responsibility
+
+当task修改名字后，无需修改MainWindow，qt主循环会负责同步和更新。从而实现了task和MainWindow的0耦合。MainWindow是包含的task组件，所以task内部的修改，MainWindow无需考虑去更新，qt会自动给我更新的。
+
+### Emitting a custom signal using lambdas
+
+task组件被删除时，需要发送一个信号给MainWindow，从而让MainWindow删除这个组件。
+
+使用lambda来处理槽函数需要比信号函数更多的参数的情况。如
+
+```c++
+connect(ui->removeButton, &QPushButton::clicked, [this] { 
+        emit removed(this); 
+    });
+```
+
+关于删除task这个逻辑处理可以学习一下：Task对象负责删除操作，所以当他删除时需要放松一个删除信号，这个信号需要有个这个task的地址，不然MainWindow不知道是哪个task要被删除，而this正好指向了当前这个task。
+
+使用labmda的&捕获时，要注意对象生命周期的问题。
+
+注意c++20之前[=]会自动捕获this，所以不要这么使用 [=, this]，如下代码就会有问题
+
+```c++
+#include <iostream>
+#include <functional>
+
+class MyClass {
+    int id = 100;
+public:
+    std::function<void()> getLambda() {
+        int local = 42;
+        
+        // C++17：危险！this被隐式捕获
+        auto lambda = [=, this]() {  // 冗余但合法
+            std::cout << "id: " << id          // 通过this访问 - 有悬挂风险！ 这里不是id的拷贝，而是直接访问的this->id
+                      << ", local: " << local  // 值捕获 - 安全
+                      << std::endl;
+        };
+        
+        return lambda;  // lambda可能比对象生命周期更长！
+    }
+    
+    ~MyClass() {
+        std::cout << "MyClass destroyed\n";
+    }
+};
+
+int main() {
+    std::function<void()> func;
+    
+    {
+        MyClass obj;
+        func = obj.getLambda();  // lambda捕获了this指针
+        func();  // 正常输出：id: 100, local: 42
+    }  // obj被销毁！
+    
+    func();  // 未定义行为！this指针已失效
+    return 0;
+}
+```
+
+如果将指针从qt的父子对象中剔除，记得手动管理内存。
+
+### Simplifying with the auto type and a range-based for loop
+
+当用户task完成后，发出的信号名叫statusChanged而不是checkboxChecked，这样可以隐藏task的实现细节。
+
+当类型比较明确，或则类型真的很长时（如迭代器）才使用auto，极可能减少使用。
+
+
+
 ## Dividing Your Project and Ruling Your Code
 
 ### Designing a maintainable project
@@ -108,3 +283,7 @@ PictureModel通过构造函数传入AlbumModel，然后进行信号槽连接。�
 构造没有初始化数据库所有的pictures到缓存，因为只有当album被选择我们才加载。
 
 在代码强制指针拥有vector，即使是空的，可以避免代码中的空指针判断，虽然多一个空vector在堆上的开销。
+
+## Conquering the Desktop UI
+
+### Creating a GUI linked to a core shared library
