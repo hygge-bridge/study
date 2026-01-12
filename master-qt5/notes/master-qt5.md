@@ -171,6 +171,183 @@ int main() {
 
 当类型比较明确，或则类型真的很长时（如迭代器）才使用auto，极可能减少使用。
 
+## Discovering qmake Secrets
+
+### Designing a cross-platform project
+
+策略模式：用接口描述功能，具体行为由子类实现
+
+单例模式：确保给定类只有一个实例，且这个实例可以通过一个唯一访问点访问。
+
+![image-20260112110933984](master-qt5.assets/image-20260112110933984.png)
+
+使用这两个模式的好处：
+
+1. 用户（如ui）只知道SysInfo，平台特定类被SysInfo实例化，用户无需知道关于SysInfo子类的事情
+2. SysInfo是个单例，ui访问十分的方便
+
+SysInfo接口设计
+
+```c++
+class SysInfo 
+{ 
+public: 
+    SysInfo(); 
+    virtual ~SysInfo(); 
+ 	
+    virtual void init() = 0; 
+    virtual double cpuLoadAverage() = 0; 
+    virtual double memoryUsed() = 0; 
+};
+```
+
+纯虚函数作用：强制子类实现，且自己成为抽象类所以不用担心会用户错误实例化。
+
+基类的析构函数必须是virtual，不然从基类指针（指向子类）调用delete时可能无法正确调用子类的析构。
+
+### Adding the Windows implementation
+
+typedef struct _FILETIME FILETIME这种对类起别名的方式，也可以当做前置声明。
+
+为什么不在构造函数的初始化列表中做初始化操作，而是在init中调用cpuRawData()，这是因为，初始化列表中直接调用cpuRawData()可能某些变量还没有被初始化，这样有可能导致未定义行为，不过当前场景下是正常的。但是这是一个好的编程习惯，对于调用成员方法初始化的变量，放到一个单独的init方法中，构造函数中只需要默认初始化就行了。
+
+对于只有一个特定场景才需要编译的文件，就放到一个作用域下。比如windows类型的使用就放到windows作用域下，所以在其他平台上编译时，根本不会编译这个文件，那么也就是安全的了。对于编译某些模块代码同理，没有开启这些模块，就不编译这些代码。然后业务层在通过宏去处理是否执行代码就可以了，后续SysInfo的instance函数中会看到具体实现方法。
+
+```c++
+QT       += core gui charts
+CONFIG   += C++14 
+ 
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets 
+ 
+TARGET = ch02-sysinfo 
+TEMPLATE = app 
+ 
+SOURCES += main.cpp \ 
+    MainWindow.cpp \ 
+    SysInfo.cpp 
+ 
+HEADERS += MainWindow.h \ 
+    SysInfo.h 
+ 
+windows { 
+    SOURCES += SysInfoWindowsImpl.cpp 
+    HEADERS += SysInfoWindowsImpl.h 
+} 
+ 
+FORMS    += MainWindow.ui
+```
+
+如果头文件使用了前置声明，然后在源文件包含了对应的头文件。加入使用智能指针的话，就需要手动写一个析构函数并且将实现放到源文件中，不然智能指针自动调用析构时会找不到这个对象的析构。如下例子
+
+```c++
+#ifndef SYSINFOWINIMPL_H
+#define SYSINFOWINIMPL_H
+
+#include <memory>
+#include "SysInfo.h"
+
+class SysInfoWinImpl : public SysInfo
+{
+public:
+    explicit SysInfoWinImpl();
+    // 实现必须放在源文件，哪怕是使用编译器默认的实现
+    ~SysInfoWinImpl();
+private:
+    class SysMonitor;
+    std::unique_ptr<SysMonitor> mSysMonitor;
+};
+
+#endif // SYSINFOWINIMPL_H
+```
+
+这里SysMonitor是前置声明，使用系统默认的析构函数时，当调用到`std::unique_ptr<SysMonitor> mSysMonitor`需要知道SysMonitor的定义，但是这个编译器默认生成的~SysInfoWinImpl()会放在头文件中（默认内联），所以就编译报错了。解决方法，在源文件中SysInfoWinImpl::~SysInfoWinImpl() = default;。注意这里建议使用default，而不是定义空的函数体，前者是使用编译器默认的析构，后者只是一个空的函数体。
+
+使用shared_ptr就不会有这个问题。因为unique_ptr的删除器是类型的一部分，而shared_ptr的删除器通过类型擦除动态存储。
+
+unique_ptr
+
+```c++
+// unique_ptr: 删除器是类型的一部分（编译时确定）
+template<typename T, typename Deleter = std::default_delete<T>>
+class unique_ptr {
+    T* ptr;
+    Deleter deleter;  // 🔴 内联存储，编译时需要知道Deleter类型
+    
+public:
+    ~unique_ptr() {
+        deleter(ptr);  // 🔴 直接调用，编译时绑定
+    }
+};
+```
+
+shared_ptr
+
+```c++
+// shared_ptr: 删除器存储在控制块中（运行时确定）
+template<typename T>
+class shared_ptr {
+    T* ptr;
+    ControlBlockBase* cb;  // 🟢 指向基类指针
+    
+public:
+    ~shared_ptr() {
+        if (cb->decref() == 0) {
+            cb->destroy();  // 🟢 虚函数调用，运行时绑定
+        }
+    }
+};
+```
+
+
+
+### Adding the Linux implementation
+
+无
+
+### Adding the macOS implementation
+
+无
+
+### Transforming SysInfo into a singleton
+
+单例的核心：唯一访问点。所以我们需要将构造和拷贝都拒绝暴露。
+
+单例模式将构造函数设置为protected，从而允许子类调用父类的构造，可以实现多态单例。
+
+static局部变量，可以保证全局唯一，c++11后且是线程安全的。单例的常用实现
+
+```c++
+SysInfo& SysInfo::instance() 
+{ 
+    static SysInfoWindowsImpl singleton; 
+    return singleton; 
+}
+```
+
+### Exploring Qt Charts
+
+![image-20260112200729000](master-qt5.assets/image-20260112200729000.png)
+
+由于CpuWidget和MemoryWidget会共享一些相同的任务，所以创建一个基类。
+
+connect的槽函数可以是虚函数，这样就可以实现信号槽的多态。
+
+向一个widget中添加widget时，先将后者加入layout中，再将这个layout设置为前者的layout。如果前者本来就有layout，那么直接把layout加入进去就可以了。
+
+注意添加到布局的widget，布局不会获取到所有权。原理如下：
+
+1. **如果 widget 没有父对象**：`addWidget()` 会将其父对象设置为布局的父对象
+2. **如果 widget 已有父对象**：保持原有父对象不变
+3. **如果布局没有父对象**：widget 保持无父状态
+
+setLayout会自动设置被设置layout的父对象。
+
+### CpuWidget using QCharts
+
+QAbstractSeries持有数据以及数据应该怎么样被绘制，但是它不知道应该吧数据放在layout的哪个位置。
+
+基于模板方法模式，刷新操作以及添加到布局的操作由父类实现了，子类只需要关心展示什么数据以及怎么展示，极大减轻了子类的负担。
+
 
 
 ## Dividing Your Project and Ruling Your Code
