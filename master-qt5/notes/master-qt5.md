@@ -548,3 +548,27 @@ AlbumListWidget负责新增album以及选择一个album，当选择一个album�
 一般会将图片、声音、翻译文件放到qt资源文件中，这是直接内嵌到应用程序中了（构建阶段就内签了）。
 
 一个view一般按需要两个东西：model和selectionModel。前者提供顺序，后者提供选择（也就是用户选了哪个模型）。在不同的view中共享一个selectionModel就可以很方便实现同步选择。
+
+### Creating ThumbnailProxyModel
+
+Picture对象类只是简单包含了照片的地址，所以具体如何展示照片交给了desktop部分，core只放置最核心的部分从而确保了core的复用性。
+
+pictureModel只是获取Picture信息，通过QAbstractProxyModel代理模型来实现对数据的处理，view直接从代理模型获取被处理过后的数据，就可以达到扩展原始model行为的效果。
+
+QAbstractProxyModel有两个子类：
+
+- QIdentityProxyModel：代理模型和源模型一一对应，一般用于修改数据展示（重写data()）
+- QSortFilterProxyModel：可以排序、过滤行灯，与源模型不再一一对应了
+
+对于存放指针的容器，可以使用qDeleteAll删除，用法为先调用qDeleteAll，再clear，从而避免误操作二次delete
+
+```c++
+qDeleteAll(mThumbnails); 
+mThumbnails.clear();
+```
+
+Qt::DecorationRole表示装饰责任，所以如果不是这个role，直接返回源模型的data就行。displayrole则是一般显示普通内容的。
+
+通过QAbstractProxyModel，我们可以在不修改core的情况下添加行为，很好的解耦了。
+
+如果明确父类和子类的类型转换是安全的那么使用static_cast就可以了，这在编译时期确定了，而dynamic_cast是运行是通过rtti进行转换的，效率更低。
