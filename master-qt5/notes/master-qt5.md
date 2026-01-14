@@ -520,3 +520,31 @@ PictureModel通过构造函数传入AlbumModel，然后进行信号槽连接。�
 ## Conquering the Desktop UI
 
 ### Creating a GUI linked to a core shared library
+
+当不同子项目有依赖关系时，使用depends关键字来指定关系，而不是用顺序，前者在并行情况下可能会被优化。注意这里一般使用=而不是+=，如`gallery-desktop.depends = gallery-core`这是为了编译理解，如果是+=，读者就会想难道之前还有依赖吗，所以直接使用=然后给出所有的依赖更好一点。
+
+desktop项目结构图：![image-20260114085643357](master-qt5.assets/image-20260114085643357.png)
+
+不同模块的职责严格独立：![image-20260114085838016](master-qt5.assets/image-20260114085838016.png)
+
+在gui项目中一般建议使用qt容器而不是stl，因为qt容器提供了更多的业务相关的操作接口，更加方便。
+
+链接一个库需要的操作：设置库路径 链接库文件 设置头文件搜索路径
+
+```shell
+# -L指定库文件路径 -l库文件名称
+LIBS += -L$$OUT_PWD/../gallery-core/release/ -lgallery-core
+# 头文件搜索路径
+INCLUDEPATH += $$PWD/../gallery-core 
+DEPENDPATH += $$PWD/../gallery-core
+```
+
+### Listing your albums with AlbumListWidget
+
+AlbumListWidget负责新增album以及选择一个album，当选择一个album时需要发送一个event，为了让其他组件可以展示正确的数据。
+
+如何选择合适的view：查看model的类型。比如model是继承自QAbstractListModel的，那么显然就可以使用QListView。
+
+一般会将图片、声音、翻译文件放到qt资源文件中，这是直接内嵌到应用程序中了（构建阶段就内签了）。
+
+一个view一般按需要两个东西：model和selectionModel。前者提供顺序，后者提供选择（也就是用户选了哪个模型）。在不同的view中共享一个selectionModel就可以很方便实现同步选择。
