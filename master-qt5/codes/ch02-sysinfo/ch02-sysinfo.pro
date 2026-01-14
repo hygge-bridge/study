@@ -17,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     CpuWidget.cpp \
+    MemoryWidget.cpp \
     SysInfo.cpp \
     SysInfoWidget.cpp \
     main.cpp \
@@ -25,6 +26,7 @@ SOURCES += \
 HEADERS += \
     CpuWidget.h \
     MainWindow.h \
+    MemoryWidget.h \
     SysInfo.h \
     SysInfoWidget.h
 

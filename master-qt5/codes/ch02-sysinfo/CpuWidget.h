@@ -1,11 +1,8 @@
 #ifndef CPUWIDGET_H
 #define CPUWIDGET_H
 
+#include <QPieSeries>
 #include "SysInfoWidget.h"
-
-namespace QtCharts {
-    class QPieSeries;
-}
 
 class SysInfo;
 

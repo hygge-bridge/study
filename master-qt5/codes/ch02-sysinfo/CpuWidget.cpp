@@ -1,6 +1,4 @@
 #include <QString>
-#include <QtCharts/QChartView>
-#include <QtCharts/QPieSeries>
 #include "CpuWidget.h"
 #include "SysInfo.h"
 
@@ -12,12 +10,12 @@ CpuWidget::CpuWidget(QWidget *parent)
     , mSysInfo(SysInfo::instance())
     , mSeries(new QtCharts::QPieSeries(this))
 {
-    mSeries->setName("Cpu Load");
     mSeries->setHoleSize(0.35);
     mSeries->append(cpuUsedText, 0);
     mSeries->append(cpuFreeText, 0);
 
     chartView().chart()->addSeries(mSeries);
+    chartView().chart()->setTitle("Cpu Load");
 }
 
 

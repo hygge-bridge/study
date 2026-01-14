@@ -344,9 +344,65 @@ setLayout会自动设置被设置layout的父对象。
 
 ### CpuWidget using QCharts
 
+在ui界面类中，直接包含了`#include <QtCharts/QPieSeries>`这是因为这个界面类本身就是一个QPieSeries深度绑定了，而且用户需要知道这个图标的属性，所以此时没有必要使用前置声明，使用前置声明还会导致一些内联函数不好使用，所以大可不必了。但是如果是数据库管理类，那么就需要前置声明（第三章会提到），因为用户只需要关系数据存储操作即可，不应该知道我的具体实现，我使用sqlite，json都可以，接口是保持一致的。
+
 QAbstractSeries持有数据以及数据应该怎么样被绘制，但是它不知道应该吧数据放在layout的哪个位置。
 
 基于模板方法模式，刷新操作以及添加到布局的操作由父类实现了，子类只需要关心展示什么数据以及怎么展示，极大减轻了子类的负担。
+
+qt好习惯：栈对象不设置父对象，堆对象设置父对象（用qt父子对象模型去析构），避免double free。
+
+### Memory using Qcharts
+
+无
+
+### The .pro file in depth
+
+qmake可以理解为平台独立的makefile。
+
+### Under the hood of qmake
+
+为了处理信号槽机器，qt内部会创建一个我们的类（包含Q_OBJECT）的moc_*.cpp的中间文件。编译图：
+
+![image-20260113135755999](master-qt5.assets/image-20260113135755999.png)
+
+uic：将.ui文件生成相应的ui_*.h
+
+moc: 将超级父类是QObject以及包含Q_OBJECT的类生成moc_*.cpp
+
+g++： 将所有源文件和中间moc文件编译进.o文件，然后链接所有文件
+
+由于c++没有代码自省，模版可以完成部分，但是会导致代码可读性鲁棒性等很差，且编译器要求高，所以qt自己搞了个moc。
+
+### Beneath Q_OBJECT and signals/slots
+
+```c++
+#define slots // 什么都没有
+#define signals public // 就是public，为了让外部可以接收到信号
+#define emit  // 什么都没有
+```
+
+connect会创建一个Connection示例
+
+```c++
+struct Connection 
+    { 
+        QObject *sender; 
+        QObject *receiver; 
+        union { 
+            StaticMetaCallFunction callFunction; 
+            QtPrivate::QSlotObjectBase *slotObj; 
+        }; 
+        // The next pointer for the singly-linked ConnectionList 
+        Connection *nextConnectionList; 
+        //senders linked list 
+        Connection *next; 
+        Connection **prev; // 二级指针可以避免特殊处理头结点，现在是指向了前一个节点的next指针
+        ... 
+    };
+```
+
+
 
 
 

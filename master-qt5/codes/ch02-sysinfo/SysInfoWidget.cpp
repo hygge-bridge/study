@@ -1,5 +1,4 @@
 #include <QVBoxLayout>
-#include <QtCharts/QChartView>
 #include "SysInfoWidget.h"
 
 SysInfoWidget::SysInfoWidget(QWidget *parent, int startDelayMs, int intervalDelayMs)
@@ -16,11 +15,6 @@ SysInfoWidget::SysInfoWidget(QWidget *parent, int startDelayMs, int intervalDela
 
     setLayout(new QVBoxLayout());
     layout()->addWidget(mChartView);
-}
-
-QtCharts::QChartView &SysInfoWidget::chartView()
-{
-    return *mChartView;
 }
 
 SysInfoWidget::~SysInfoWidget() = default;

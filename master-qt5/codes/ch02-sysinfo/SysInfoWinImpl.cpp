@@ -69,12 +69,12 @@ void SysInfoWinImpl::init()
     mSysMonitor->init();
 }
 
-double SysInfoWinImpl::cpuLoaded() const
+double SysInfoWinImpl::cpuLoaded()
 {
     return mSysMonitor->cpuLoaded();
 }
 
-double SysInfoWinImpl::memoryUsed() const
+double SysInfoWinImpl::memoryUsed()
 {
     return mSysMonitor->memoryUsed();
 }

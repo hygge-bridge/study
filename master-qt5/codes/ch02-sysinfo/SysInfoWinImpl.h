@@ -11,8 +11,8 @@ public:
     ~SysInfoWinImpl();
 
     void init() override;
-    double cpuLoaded() const override;
-    double memoryUsed() const override;
+    double cpuLoaded() override;
+    double memoryUsed() override;
 
 private:
     class SysMonitor;

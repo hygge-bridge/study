@@ -9,8 +9,8 @@ public:
     virtual ~SysInfo() = default;
 
     virtual void init() = 0;
-    virtual double cpuLoaded() const = 0;
-    virtual double memoryUsed() const = 0;
+    virtual double cpuLoaded() = 0;
+    virtual double memoryUsed() = 0;
 
 protected:
     explicit SysInfo();
