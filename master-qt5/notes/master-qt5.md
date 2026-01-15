@@ -572,3 +572,5 @@ Qt::DecorationRole表示装饰责任，所以如果不是这个role，直接返�
 通过QAbstractProxyModel，我们可以在不修改core的情况下添加行为，很好的解耦了。
 
 如果明确父类和子类的类型转换是安全的那么使用static_cast就可以了，这在编译时期确定了，而dynamic_cast是运行是通过rtti进行转换的，效率更低。
+
+### Displaying the selected album with AlbumWidget

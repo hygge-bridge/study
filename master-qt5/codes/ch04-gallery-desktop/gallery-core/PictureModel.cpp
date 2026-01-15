@@ -51,8 +51,9 @@ QVariant PictureModel::data(const QModelIndex &index, int role) const
     const Picture& picture = *(mPictures->at(index.row()));
     switch (role) {
     case Qt::DisplayRole:
-    case FilePathRole:
         return picture.url().fileName();
+    case FilePathRole:
+        return picture.url().toLocalFile();
     case UrlRole:
         return picture.url();
     default:
